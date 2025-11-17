@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify
+from flask import send_from_directory
+
 import json
 import os
 import threading
@@ -7,6 +9,14 @@ app = Flask(__name__)
 
 DATA_FILE = "data.json"
 lock = threading.Lock()
+
+
+
+@app.route("/")
+def serve_dashboard():
+    return send_from_directory(".", "dashboard.html")
+
+
 
 # ---------- Helper Functions ---------- #
 
@@ -50,12 +60,6 @@ def get_value():
 
     return jsonify({"key": key, "value": data[key]})
 
-
-@app.route("/getall", methods=["GET"])
-def get_all():
-    with lock:
-        data = load_data()
-    return jsonify(data)
 
 
 @app.route("/add", methods=["POST"])
@@ -114,6 +118,33 @@ def delete_value():
 
     return jsonify({"success": True, "message": f"Deleted '{key}'"})
 
+
+
+
+@app.route("/getall", methods=["GET"])
+def get_all():
+    with lock:
+        data = load_data()
+    return jsonify(data)
+@app.route("/setall", methods=["POST"])
+def set_all():
+    """Overwrite the entire data.json file with the posted JSON object."""
+    new_data = request.get_json()
+
+    if not isinstance(new_data, dict):
+        return jsonify({
+            "error": "Request body must be a JSON object"
+        }), 400
+
+    with lock:
+        save_data(new_data)
+
+    return jsonify({
+        "success": True,
+        "message": "data.json has been fully replaced",
+        "new_data": new_data
+    })
+    
 
 # ---------- Run Server ---------- #
 
