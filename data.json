@@ -1,9 +1,10 @@
 {
   "hello": "world",
-  "incremental system": [
-    4,
-    5
-  ],
+  "incremental system": {
+    "experience": 4,
+    "level": 1,
+    "wisdom": 1
+  },
   "incremental test": {
     "unit 1": 1,
     "unit2": 2
