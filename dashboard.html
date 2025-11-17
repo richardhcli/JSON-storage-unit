@@ -1,200 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Incremental System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 20px;
-      background: #f4f4f4;
-    }
-
-    h1 {
-      margin-bottom: 15px;
-    }
-
-    /* MAIN LAYOUT */
-    .main-container {
       display: flex;
-      flex-direction: column;
-      gap: 20px;
+      height: 100vh;
     }
 
-    @media (min-width: 900px) {
-      .main-container {
-        flex-direction: row;
-      }
+    .container {
+      display: flex;
+      flex: 1;
+      flex-direction: row;
     }
 
     /* LEFT PANEL */
     .left-panel {
-      flex: 1;
-      background: #ffffff;
+      width: 40%;
       padding: 20px;
+      background: #f0f0f0;
+      border-right: 2px solid #ccc;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #searchBox {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    #searchResults {
+      margin-top: 10px;
+      padding: 10px;
+      background: #fff;
+      min-height: 100px;
       border: 1px solid #ccc;
-      border-radius: 8px;
+      overflow-y: auto;
     }
 
     /* RIGHT PANEL */
     .right-panel {
       flex: 1;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
     }
 
-    textarea {
+    #dataOutput {
       width: 100%;
-      height: 400px;
+      height: 60vh;
+      padding: 10px;
       font-family: monospace;
       font-size: 14px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      background: #fff;
-      resize: vertical;
     }
 
-    button {
-      padding: 12px;
+    .buttons {
+      margin-top: 10px;
+    }
+    .buttons button {
+      padding: 10px 20px;
+      margin-right: 10px;
       font-size: 16px;
       cursor: pointer;
-      margin-right: 10px;
     }
 
-    #status {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-
-    #searchResult {
-      margin-top: 10px;
-      font-weight: bold;
+    /* MOBILE LAYOUT */
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      .left-panel {
+        width: 100%;
+        border-right: none;
+        border-bottom: 2px solid #ccc;
+      }
+      .right-panel {
+        width: 100%;
+      }
+      #dataOutput {
+        height: 40vh;
+      }
     }
   </style>
 </head>
+
 <body>
 
-  <h1>Incremental System</h1>
+<div class="container">
 
-  <div class="main-container">
+  <!-- LEFT PANEL: SEARCH -->
+  <div class="left-panel">
+    <h2>Search JSON</h2>
+    <input type="text" id="searchBox" placeholder="Search for key...">
+    <div id="searchResults"></div>
+  </div>
 
-    <!-- LEFT PANEL -->
-    <div class="left-panel">
-      <h2>Search JSON</h2>
+  <!-- RIGHT PANEL: JSON + BUTTONS -->
+  <div class="right-panel">
+    <h2>Data Output</h2>
+    <textarea id="dataOutput"></textarea>
 
-      <input id="searchBox" 
-             type="text" 
-             placeholder="Enter key to search..." 
-             style="width:100%; padding:10px; font-size:16px;">
-
-      <button onclick="searchKey()" style="margin-top:10px;">Search</button>
-
-      <div id="searchResult"></div>
-    </div>
-
-    <!-- RIGHT PANEL -->
-    <div class="right-panel">
-
-      <!-- JSON TEXTAREA -->
-      <textarea id="dataOutput" placeholder="JSON data appears here..."></textarea>
-
-      <!-- BUTTONS BELOW -->
-      <div class="controls">
-        <button onclick="refreshData()">Refresh</button>
-        <button onclick="updateData()">Update</button>
-        <div id="status"></div>
-      </div>
-
+    <div class="buttons">
+      <button id="refreshBtn">Refresh</button>
+      <button id="updateBtn">Update</button>
     </div>
   </div>
 
-  <script>
-    const API_BASE = "http://127.0.0.1:5000";
-    let cachedJSON = {};   // Cache for searching
+</div>
 
-    function setStatus(msg, isError=false) {
-      const s = document.getElementById("status");
-      s.style.color = isError ? "red" : "green";
-      s.textContent = msg;
-    }
-
-    function setSearchStatus(msg, isError=false) {
-      const s = document.getElementById("searchResult");
-      s.style.color = isError ? "red" : "green";
-      s.textContent = msg;
-    }
-
-    async function refreshData() {
-      try {
-        const res = await fetch(`${API_BASE}/getall`);
-        if (!res.ok) {
-          setStatus("Error fetching data", true);
-          return;
-        }
-        const json = await res.json();
-
-        cachedJSON = json;
-        document.getElementById("dataOutput").value =
-          JSON.stringify(json, null, 2);
-
-        setStatus("Data loaded.");
-      } catch (err) {
-        setStatus("Failed to connect to backend", true);
-      }
-    }
-
-    async function updateData() {
-      const text = document.getElementById("dataOutput").value;
-
-      let parsed;
-      try {
-        parsed = JSON.parse(text);
-      } catch (err) {
-        setStatus("Textbox does not contain valid JSON!", true);
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_BASE}/setall`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed)
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          setStatus("Backend error: " + data.error, true);
-          return;
-        }
-
-        cachedJSON = parsed;
-        setStatus("Data successfully updated.");
-      } catch (err) {
-        setStatus("Failed to connect to backend", true);
-      }
-    }
-
-    function searchKey() {
-      const key = document.getElementById("searchBox").value.trim();
-      if (!key) {
-        setSearchStatus("Enter a key.", true);
-        return;
-      }
-
-      if (cachedJSON.hasOwnProperty(key)) {
-        setSearchStatus(
-          `Found key "${key}": ${JSON.stringify(cachedJSON[key])}`, 
-          false
-        );
-      } else {
-        setSearchStatus(`Key "${key}" not found.`, true);
-      }
-    }
-  </script>
+<!-- Attach modular JS -->
+<script src="dashboard.js"></script>
 
 </body>
 </html>
