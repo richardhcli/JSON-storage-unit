@@ -1,36 +1,64 @@
-// Auto-detect backend host
 const API_BASE = window.location.origin;
 
-// DOM elements
+// DOM references
 const dataOutput = document.getElementById("dataOutput");
 const refreshBtn = document.getElementById("refreshBtn");
 const updateBtn = document.getElementById("updateBtn");
 const searchBox = document.getElementById("searchBox");
 const searchResults = document.getElementById("searchResults");
+const logBox = document.getElementById("logBox");
+
+// Log helper
+function log(message, type = "info") {
+  const time = new Date().toLocaleTimeString();
+  const prefix = type === "error" ? "[ERROR]" : "[OK]";
+  logBox.textContent += `${time} ${prefix} ${message}\n`;
+  logBox.scrollTop = logBox.scrollHeight;  // auto-scroll
+}
 
 // Refresh JSON from backend
 async function refreshJSON() {
   try {
     const res = await fetch(`${API_BASE}/getall`);
+    if (!res.ok) {
+      log("Failed to fetch JSON from backend.", "error");
+      return;
+    }
+
     const json = await res.json();
     dataOutput.value = JSON.stringify(json, null, 2);
+    log("Refreshed JSON.");
   } catch (err) {
-    alert("Failed to refresh: " + err);
+    log("Refresh error: " + err.message, "error");
   }
 }
 
 // Update backend with textarea JSON
 async function updateJSON() {
+  let parsed;
+
   try {
-    const parsed = JSON.parse(dataOutput.value);
-    await fetch(`${API_BASE}/setall`, {
+    parsed = JSON.parse(dataOutput.value);
+  } catch (err) {
+    log("Update failed — invalid JSON.", "error");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/setall`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(parsed)
     });
-    alert("Updated JSON!");
+
+    if (!res.ok) {
+      log("Backend rejected update.", "error");
+      return;
+    }
+
+    log("Updated backend JSON successfully.");
   } catch (err) {
-    alert("Invalid JSON or update failed: " + err);
+    log("Update request failed: " + err.message, "error");
   }
 }
 
@@ -43,6 +71,7 @@ function performSearch() {
     json = JSON.parse(dataOutput.value);
   } catch {
     searchResults.innerHTML = "<i>Invalid JSON in dataOutput</i>";
+    log("Search aborted — invalid JSON in viewer.", "error");
     return;
   }
 
@@ -60,6 +89,9 @@ function performSearch() {
 
   searchResults.innerHTML =
     matches.length ? matches.join("<br><br>") : "<i>No matches found</i>";
+
+  log(matches.length ? `Search matched ${matches.length} key(s).`
+                     : "Search found no matches.");
 }
 
 // Event bindings
@@ -67,5 +99,6 @@ refreshBtn.onclick = refreshJSON;
 updateBtn.onclick = updateJSON;
 searchBox.addEventListener("input", performSearch);
 
-// Load initial JSON
+// Initial load
 refreshJSON();
+log("Dashboard ready.");

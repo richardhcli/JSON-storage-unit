@@ -9,14 +9,45 @@
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      display: flex;
+      padding: 0;
       height: 100vh;
+      overflow: hidden;
     }
 
+    /* ===== TOP TITLE BANNER ===== */
+    .banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5vh;
+      background: #333;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 1000;
+    }
+
+    .banner-title {
+      font-size: 22px;
+      font-weight: bold;
+    }
+
+    .banner input {
+      padding: 6px 10px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: none;
+    }
+
+    /* ===== MAIN LAYOUT ===== */
     .container {
       display: flex;
-      flex: 1;
       flex-direction: row;
+      height: 95vh;
+      margin-top: 5vh; /* push content below banner */
     }
 
     /* LEFT PANEL */
@@ -27,6 +58,7 @@
       border-right: 2px solid #ccc;
       display: flex;
       flex-direction: column;
+      overflow-y: auto;
     }
 
     #searchBox {
@@ -51,14 +83,17 @@
       padding: 20px;
       display: flex;
       flex-direction: column;
+      overflow-y: auto;
     }
 
     #dataOutput {
       width: 100%;
-      height: 60vh;
+      height: 50vh;
       padding: 10px;
       font-family: monospace;
       font-size: 14px;
+      border: 1px solid #ccc;
+      background: #fff;
     }
 
     .buttons {
@@ -69,6 +104,18 @@
       margin-right: 10px;
       font-size: 16px;
       cursor: pointer;
+    }
+
+    /* Log panel */
+    #logBox {
+      margin-top: 20px;
+      padding: 10px;
+      height: 15vh;
+      background: #ffffff;
+      border: 1px solid #ccc;
+      font-family: monospace;
+      overflow-y: auto;
+      white-space: pre-wrap;
     }
 
     /* MOBILE LAYOUT */
@@ -93,16 +140,26 @@
 
 <body>
 
+<!-- ===== TOP FIXED BANNER ===== -->
+<div class="banner">
+  <div class="banner-title">My Incremental System</div>
+
+  <div class="banner-userid">
+    <input type="text" id="userIdInput" placeholder="User ID">
+  </div>
+</div>
+
+<!-- ===== MAIN CONTENT AREA ===== -->
 <div class="container">
 
-  <!-- LEFT PANEL: SEARCH -->
+  <!-- LEFT PANEL -->
   <div class="left-panel">
     <h2>Search JSON</h2>
     <input type="text" id="searchBox" placeholder="Search for key...">
     <div id="searchResults"></div>
   </div>
 
-  <!-- RIGHT PANEL: JSON + BUTTONS -->
+  <!-- RIGHT PANEL -->
   <div class="right-panel">
     <h2>Data Output</h2>
     <textarea id="dataOutput"></textarea>
@@ -111,12 +168,13 @@
       <button id="refreshBtn">Refresh</button>
       <button id="updateBtn">Update</button>
     </div>
-  </div>
 
+    <!-- Log Box -->
+    <div id="logBox"></div>
+  </div>
 </div>
 
-<!-- Attach modular JS -->
-<script src="dashboard.js"></script>
+<script src="/static/dashboard.js"></script>
 
 </body>
 </html>
