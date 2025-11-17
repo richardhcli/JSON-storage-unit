@@ -12,7 +12,7 @@ DATA_FILE = "data.json"
 lock = threading.Lock()
 # Hard-coded secret key for simple API access control.
 # NOTE: For production use, read this from env vars or a secrets store.
-SECRET_KEY = "my-hardcoded-secret-abc123"
+SECRET_KEY = "richardli-secret"
 
 
 def require_secret(func):
@@ -172,6 +172,14 @@ def set_all():
         "new_data": new_data
     })
     
+
+
+
+
+
+
+
+
 
 # ---------- Run Server ---------- #
 

@@ -13,6 +13,44 @@ const leftPanel = document.querySelector('.left-panel');
 const rightPanel = document.querySelector('.right-panel');
 const banner = document.querySelector('.banner');
 const container = document.querySelector('.container');
+const userIdInput = document.getElementById("userIdInput");
+
+function getApiHeaders(extra = {}) {
+  const apiKey = userIdInput ? userIdInput.value.trim() : "";
+  const headers = Object.assign({}, extra);
+  if (apiKey) headers["X-API-KEY"] = apiKey;
+  return headers;
+}
+
+if (userIdInput) {
+  const saved = localStorage.getItem('incremental_user_id');
+  if (saved) userIdInput.value = saved;
+  let lastUserIdPresent = null;
+
+  function checkUserIdPresence() {
+    const has = userIdInput.value && userIdInput.value.trim().length > 0;
+    // log only when we transition into 'empty' state (avoid spamming)
+    if (!has && lastUserIdPresent !== false) {
+      log('No User ID entered — API requests will be rejected by the server.', 'error');
+    }
+    if (has && lastUserIdPresent === false) {
+      log('User ID entered.');
+    }
+    lastUserIdPresent = has;
+  }
+
+  userIdInput.addEventListener('input', () => {
+    localStorage.setItem('incremental_user_id', userIdInput.value);
+    checkUserIdPresence();
+  });
+  userIdInput.addEventListener('change', () => {
+    log('User ID updated.');
+    checkUserIdPresence();
+  });
+
+  // initial check on load
+  checkUserIdPresence();
+}
 
 function updateBannerSticky() {
   // Become sticky when either panel has been scrolled down
@@ -49,7 +87,7 @@ function log(message, type = "info") {
 // Refresh JSON from backend
 async function refreshJSON() {
   try {
-    const res = await fetch(`${API_BASE}/getall`);
+    const res = await fetch(`${API_BASE}/getall`, { headers: getApiHeaders() });
     if (!res.ok) {
       log("Failed to fetch JSON from backend.", "error");
       return;
@@ -77,7 +115,7 @@ async function updateJSON() {
   try {
     const res = await fetch(`${API_BASE}/setall`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getApiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(parsed)
     });
 
