@@ -72,8 +72,12 @@ window.addEventListener('resize', updateBannerSticky);
 function log(message, type = "info") {
   const time = new Date().toLocaleTimeString();
   const prefix = type === "error" ? "[ERROR]" : "[OK]";
-  logBox.textContent += `${time} ${prefix} ${message}\n`;
-  logBox.scrollTop = logBox.scrollHeight;
+  if (logBox) {
+    logBox.textContent += `${time} ${prefix} ${message}\n`;
+    logBox.scrollTop = logBox.scrollHeight;
+  } else {
+    console.warn(`Log box missing: ${time} ${prefix} ${message}`);
+  }
 }
 
 async function refreshJSON() {
@@ -131,6 +135,10 @@ async function updateJSON() {
 }
 
 function performSearch() {
+  if (!searchBox || !searchResults) {
+    return;
+  }
+
   const query = searchBox.value.trim().toLowerCase();
 
   let json;
@@ -149,7 +157,7 @@ function performSearch() {
 
   const matches = [];
   for (const key in json) {
-    if (key.toLowerCase().includes(query)) {
+    if (Object.prototype.hasOwnProperty.call(json, key) && key.toLowerCase().includes(query)) {
       matches.push(`<b>${key}</b>: ${JSON.stringify(json[key])}`);
     }
   }
@@ -161,10 +169,17 @@ function performSearch() {
                      : "Search found no matches.");
 }
 
-refreshBtn.onclick = refreshJSON;
-updateBtn.onclick = updateJSON;
-searchBox.addEventListener("input", performSearch);
+if (refreshBtn) refreshBtn.addEventListener("click", refreshJSON);
+if (updateBtn) updateBtn.addEventListener("click", updateJSON);
+if (searchBox) searchBox.addEventListener("input", performSearch);
 
-refreshJSON();
-log("Dashboard ready.");
-updateBannerSticky();
+if (dataOutput) {
+  try {
+    const activeTab = localStorage.getItem('incremental_active_tab');
+    if (activeTab === 'data') {
+      refreshJSON();
+    }
+  } catch (e) { /* ignore */ }
+  log("Dashboard ready.");
+  updateBannerSticky();
+}

@@ -2,185 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Incremental System</title>
+  <title>Incremental System · Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  {# --------------------------------------------------------------------- #}
+  {# Global Styles: layout, responsive behavior, and shared UI elements    #}
+  {# --------------------------------------------------------------------- #}
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      overflow: hidden;
-    }
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:0; height:100vh; display:flex; flex-direction:column; font-family:Arial, sans-serif; background:#e6e6e6; }
+    .banner { position:relative; width:100%; height:60px; background:#333; color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 20px; z-index:1000; }
+    .banner.sticky { position:fixed; top:0; left:0; }
+    .banner-title { font-size:22px; font-weight:bold; letter-spacing:0.5px; }
+    .banner input { padding:6px 10px; font-size:14px; border-radius:4px; border:none; }
+    .container { flex:1; display:flex; min-height:0; margin-top:0; }
+    .main-content { flex:1; padding:20px; display:flex; flex-direction:column; overflow:hidden; background:#f0f0f0; min-height:0; }
+    .right-panel { width:320px; min-width:240px; max-width:520px; background:#fff; border-left:2px solid #ccc; padding:20px; display:flex; flex-direction:column; overflow:auto; resize:horizontal; min-height:0; }
+    .sidebar-title { margin:0 0 10px 0; font-size:18px; font-weight:bold; }
+    .log-box { flex:1; border:1px solid #ccc; background:#fff; font-family:monospace; font-size:13px; padding:10px; overflow-y:auto; white-space:pre-wrap; }
 
-    /* ===== TOP TITLE BANNER ===== */
-    /* Banner is in normal flow by default; it becomes fixed when the user scrolls */
-    .banner {
-      position: relative;
-      width: 100%;
-      height: 5vh;
-      background: #333;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-    }
+    /* Left Panel & Tab Sections */
+    .dashboard-layout { flex:1; display:flex; gap:20px; min-height:0; }
+    .left-panel { width:260px; min-width:200px; background:#fff; border:1px solid #ccc; border-radius:6px; padding:16px; display:flex; flex-direction:column; overflow-y:auto; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .left-panel h2 { margin:0 0 8px 0; font-size:16px; }
 
-    .banner.sticky {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      z-index: 1000;
-    }
+    /* Data Tab Elements */
+    #dataOutput { width:100%; min-height:160px; padding:10px; font-family:monospace; font-size:14px; border:1px solid #ccc; border-radius:4px; background:#fafafa; resize:vertical; }
+    .buttons { margin-top:12px; display:flex; gap:10px; }
+    .buttons button { padding:10px 20px; font-size:15px; cursor:pointer; border-radius:4px; border:1px solid #888; background:#f5f5f5; }
 
-    .banner-title {
-      font-size: 22px;
-      font-weight: bold;
-    }
-
-    .banner input {
-      padding: 6px 10px;
-      font-size: 14px;
-      border-radius: 4px;
-      border: none;
-    }
-
-    /* ===== MAIN LAYOUT ===== */
-    .container {
-      display: flex;
-      flex-direction: row;
-      height: 95vh;
-      margin-top: 0; /* will be adjusted via JS when banner becomes fixed */
-    }
-
-    /* LEFT PANEL */
-    .left-panel {
-      width: 60%;
-      padding: 20px;
-      background: #f0f0f0;
-      border-right: 2px solid #ccc;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-    }
-
-    #searchBox {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      font-size: 16px;
-    }
-
-    #searchResults {
-      margin-top: 10px;
-      padding: 10px;
-      background: #fff;
-      min-height: 100px;
-      border: 1px solid #ccc;
-      overflow-y: auto;
-    }
-
-    /* RIGHT PANEL */
-    .right-panel {
-      flex: 1;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-    }
-
-    #dataOutput {
-      width: 100%;
-      height: 50vh;
-      padding: 10px;
-      font-family: monospace;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      background: #fff;
-    }
-
-    .buttons {
-      margin-top: 10px;
-    }
-    .buttons button {
-      padding: 10px 20px;
-      margin-right: 10px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    /* Log panel */
-    #logBox {
-      margin-top: 20px;
-      padding: 10px;
-      height: 15vh;
-      background: #ffffff;
-      border: 1px solid #ccc;
-      font-family: monospace;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-
-    /* MOBILE LAYOUT */
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-      }
-      .left-panel {
-        width: 100%;
-        border-right: none;
-        border-bottom: 2px solid #ccc;
-      }
-      .right-panel {
-        width: 100%;
-      }
-      #dataOutput {
-        height: 40vh;
-      }
+    /* Responsive Adjustments */
+    @media (max-width:1024px) {
+      .container { flex-direction:column; }
+      .right-panel { width:100%; max-width:none; border-left:none; border-top:2px solid #ccc; resize:none; }
+      .dashboard-layout { flex-direction:column; }
+      .left-panel { width:100%; min-height:120px; order:-1; }
     }
   </style>
+
+  {# ===================================================================== #}
+  {# Jinja Macros: Modular building blocks for banner, panels, and sidebar #}
+  {# ===================================================================== #}
+  {% macro banner() %}
+    <!-- Banner: fixed header with app title, tab buttons, and user ID input -->
+    <header class="banner">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <a class="banner-title" href="/" style="color:#fff; text-decoration:none;">My Incremental System</a>
+        <div class="tab-buttons" style="display:flex; gap:8px;">
+          <button class="tab-button" data-tab="dashboard">Dashboard</button>
+          <button class="tab-button" data-tab="data">Data</button>
+          <button class="tab-button" data-tab="apigen">API Gen</button>
+        </div>
+      </div>
+      <div class="banner-userid">
+        <input type="text" id="userIdInput" placeholder="User ID" />
+      </div>
+    </header>
+  {% endmacro %}
+
+  {% macro dashboard_tabs() %}
+    <!-- Left Panel: hosts all tabbed views (Dashboard, Data, API Generator) -->
+    <aside class="left-panel">
+      {# Dashboard tab intentionally empty for future widgets #}
+      <section id="tab-dashboard" class="tab-panel active" aria-label="Dashboard"></section>
+
+      {# Data Tab: search + data output/editor #}
+      <section id="tab-data" class="tab-panel" aria-label="Data">
+        <h2>Search JSON</h2>
+        <input type="text" id="searchBox" placeholder="Search for key..." />
+        <div id="searchResults" style="margin-bottom:12px;"></div>
+        <h2>Data Output</h2>
+        <textarea id="dataOutput"></textarea>
+        <div class="buttons">
+          <button id="refreshBtn">Refresh</button>
+          <button id="updateBtn">Update</button>
+        </div>
+      </section>
+
+      {# API Generator Tab: build increment request snippets #}
+      <section id="tab-apigen" class="tab-panel" aria-label="API Generator">
+        <h2>API Call Generator</h2>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <label>Top-level key
+            <select id="key1"><option value="">(select...)</option></select>
+          </label>
+          <label>Nested key (optional)
+            <select id="key2"><option value="">(none)</option></select>
+          </label>
+          <label>Amount
+            <input id="amount" type="number" value="1" min="1" />
+          </label>
+          <div style="display:flex; gap:8px;">
+            <button id="generateBtn">Generate</button>
+            <button id="refreshKeysBtn">Refresh Keys</button>
+          </div>
+          <div>
+            <strong>Headers</strong>
+            <pre id="headersOut" style="white-space:pre-wrap; background:#f7f7f7; border:1px solid #ddd; padding:8px;">Content-Type: application/json
+X-API-KEY: &lt;your-secret&gt;</pre>
+          </div>
+          <div>
+            <strong>JSON Body</strong>
+            <pre id="bodyOut" style="white-space:pre-wrap; background:#f7f7f7; border:1px solid #ddd; padding:8px;">{}</pre>
+          </div>
+          <div>
+            <strong>JS Example</strong>
+            <pre id="jsOut" style="white-space:pre-wrap; background:#f7f7f7; border:1px solid #ddd; padding:8px;">// Press Generate to produce example</pre>
+          </div>
+        </div>
+      </section>
+    </aside>
+  {% endmacro %}
+
+  {% macro activity_log() %}
+    <!-- Right Sidebar: persistent activity log -->
+    <aside class="right-panel">
+      <div class="sidebar-title">Activity Log</div>
+      <div id="logBox" class="log-box"></div>
+    </aside>
+  {% endmacro %}
 </head>
 
+
 <body>
-
-<!-- ===== TOP FIXED BANNER ===== -->
-<div class="banner">
-  <div class="banner-title">My Incremental System</div>
-
-  <div class="banner-userid">
-    <input type="text" id="userIdInput" placeholder="User ID">
-  </div>
-</div>
-
-<!-- ===== MAIN CONTENT AREA ===== -->
-<div class="container">
-
-  <!-- LEFT PANEL -->
-  <div class="left-panel">
-    <h2>Search JSON</h2>
-    <input type="text" id="searchBox" placeholder="Search for key...">
-    <div id="searchResults"></div>
+  {{ banner() }}
+  <div class="container">
+    <main class="main-content">
+      <div class="dashboard-layout">
+        {{ dashboard_tabs() }}
+        <!-- Main content area intentionally unused; panels live in left sidebar. -->
+      </div>
+    </main>
+    {{ activity_log() }}
   </div>
 
-  <!-- RIGHT PANEL -->
-  <div class="right-panel">
-    <h2>Data Output</h2>
-    <textarea id="dataOutput"></textarea>
-
-    <div class="buttons">
-      <button id="refreshBtn">Refresh</button>
-      <button id="updateBtn">Update</button>
-    </div>
-
-    <!-- Log Box -->
-    <div id="logBox"></div>
-  </div>
-</div>
-
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-
+  {# Script Assets: shared state management, data ops, and generator logic #}
+  <script src="{{ url_for('static', filename='js/shared_ui.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/api_generator.js') }}"></script>
 </body>
 </html>
+
