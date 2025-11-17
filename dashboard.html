@@ -2,52 +2,118 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>JSON Control Dashboard</title>
+  <title>Incremental System</title>
 
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 30px;
+      margin: 0;
+      padding: 20px;
       background: #f4f4f4;
     }
+
     h1 {
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
+
+    /* MAIN LAYOUT */
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    @media (min-width: 900px) {
+      .main-container {
+        flex-direction: row;
+      }
+    }
+
+    /* LEFT PANEL */
+    .left-panel {
+      flex: 1;
+      background: #ffffff;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    /* RIGHT PANEL */
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
     textarea {
       width: 100%;
       height: 400px;
       font-family: monospace;
       font-size: 14px;
       padding: 10px;
+      border: 1px solid #ccc;
+      background: #fff;
+      resize: vertical;
     }
+
     button {
-      margin-top: 15px;
-      margin-right: 10px;
-      padding: 10px 20px;
+      padding: 12px;
       font-size: 16px;
       cursor: pointer;
+      margin-right: 10px;
     }
+
     #status {
-      margin-top: 15px;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    #searchResult {
+      margin-top: 10px;
       font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-  <h1>JSON Backend Dashboard</h1>
+  <h1>Incremental System</h1>
 
-  <textarea id="dataBox" placeholder="Current JSON will appear here..."></textarea>
+  <div class="main-container">
 
-  <br>
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+      <h2>Search JSON</h2>
 
-  <button onclick="refreshData()">Refresh</button>
-  <button onclick="updateData()">Update</button>
+      <input id="searchBox" 
+             type="text" 
+             placeholder="Enter key to search..." 
+             style="width:100%; padding:10px; font-size:16px;">
 
-  <div id="status"></div>
+      <button onclick="searchKey()" style="margin-top:10px;">Search</button>
+
+      <div id="searchResult"></div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <!-- JSON TEXTAREA -->
+      <textarea id="dataOutput" placeholder="JSON data appears here..."></textarea>
+
+      <!-- BUTTONS BELOW -->
+      <div class="controls">
+        <button onclick="refreshData()">Refresh</button>
+        <button onclick="updateData()">Update</button>
+        <div id="status"></div>
+      </div>
+
+    </div>
+  </div>
 
   <script>
     const API_BASE = "http://127.0.0.1:5000";
+    let cachedJSON = {};   // Cache for searching
 
     function setStatus(msg, isError=false) {
       const s = document.getElementById("status");
@@ -55,7 +121,12 @@
       s.textContent = msg;
     }
 
-    // Load the JSON from the backend
+    function setSearchStatus(msg, isError=false) {
+      const s = document.getElementById("searchResult");
+      s.style.color = isError ? "red" : "green";
+      s.textContent = msg;
+    }
+
     async function refreshData() {
       try {
         const res = await fetch(`${API_BASE}/getall`);
@@ -64,16 +135,19 @@
           return;
         }
         const json = await res.json();
-        document.getElementById("dataBox").value = JSON.stringify(json, null, 2);
+
+        cachedJSON = json;
+        document.getElementById("dataOutput").value =
+          JSON.stringify(json, null, 2);
+
         setStatus("Data loaded.");
       } catch (err) {
         setStatus("Failed to connect to backend", true);
       }
     }
 
-    // Send the JSON in the textbox back to the backend
     async function updateData() {
-      const text = document.getElementById("dataBox").value;
+      const text = document.getElementById("dataOutput").value;
 
       let parsed;
       try {
@@ -97,9 +171,27 @@
           return;
         }
 
+        cachedJSON = parsed;
         setStatus("Data successfully updated.");
       } catch (err) {
         setStatus("Failed to connect to backend", true);
+      }
+    }
+
+    function searchKey() {
+      const key = document.getElementById("searchBox").value.trim();
+      if (!key) {
+        setSearchStatus("Enter a key.", true);
+        return;
+      }
+
+      if (cachedJSON.hasOwnProperty(key)) {
+        setSearchStatus(
+          `Found key "${key}": ${JSON.stringify(cachedJSON[key])}`, 
+          false
+        );
+      } else {
+        setSearchStatus(`Key "${key}" not found.`, true);
       }
     }
   </script>
