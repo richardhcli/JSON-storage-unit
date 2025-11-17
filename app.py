@@ -4,11 +4,31 @@ from flask import send_from_directory
 import json
 import os
 import threading
+from functools import wraps
 
 app = Flask(__name__)
 
 DATA_FILE = "data.json"
 lock = threading.Lock()
+# Hard-coded secret key for simple API access control.
+# NOTE: For production use, read this from env vars or a secrets store.
+SECRET_KEY = "my-hardcoded-secret-abc123"
+
+
+def require_secret(func):
+    """Decorator to require the shared secret on API requests.
+
+    Accepts the key either via header `X-API-KEY` or query param `api_key`.
+    Returns 401 if missing/invalid.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # check header first, then query param
+        key = request.headers.get("X-API-KEY") or request.args.get("api_key")
+        if key != SECRET_KEY:
+            return jsonify({"error": "Unauthorized - missing or invalid API key"}), 401
+        return func(*args, **kwargs)
+    return wrapper
 
 
 
@@ -47,6 +67,7 @@ def save_data(data):
 # ---------- CRUD Routes ---------- #
 
 @app.route("/get", methods=["GET"])
+@require_secret
 def get_value():
     key = request.args.get("key")
     if not key:
@@ -63,6 +84,7 @@ def get_value():
 
 
 @app.route("/add", methods=["POST"])
+@require_secret
 def add_value():
     json_in = request.get_json()
     if not json_in or "key" not in json_in or "value" not in json_in:
@@ -83,6 +105,7 @@ def add_value():
 
 
 @app.route("/update", methods=["POST"])
+@require_secret
 def update_value():
     json_in = request.get_json()
     if not json_in or "key" not in json_in or "value" not in json_in:
@@ -102,6 +125,7 @@ def update_value():
 
 
 @app.route("/delete", methods=["POST"])
+@require_secret
 def delete_value():
     json_in = request.get_json()
     if not json_in or "key" not in json_in:
@@ -122,11 +146,14 @@ def delete_value():
 
 
 @app.route("/getall", methods=["GET"])
+@require_secret
 def get_all():
     with lock:
         data = load_data()
     return jsonify(data)
+
 @app.route("/setall", methods=["POST"])
+@require_secret
 def set_all():
     """Overwrite the entire data.json file with the posted JSON object."""
     new_data = request.get_json()

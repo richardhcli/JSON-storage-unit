@@ -8,6 +8,36 @@ const searchBox = document.getElementById("searchBox");
 const searchResults = document.getElementById("searchResults");
 const logBox = document.getElementById("logBox");
 
+// Panels & banner for sticky behavior
+const leftPanel = document.querySelector('.left-panel');
+const rightPanel = document.querySelector('.right-panel');
+const banner = document.querySelector('.banner');
+const container = document.querySelector('.container');
+
+function updateBannerSticky() {
+  // Become sticky when either panel has been scrolled down
+  const leftScrolled = leftPanel && leftPanel.scrollTop > 0;
+  const rightScrolled = rightPanel && rightPanel.scrollTop > 0;
+
+  if (leftScrolled || rightScrolled) {
+    if (!banner.classList.contains('sticky')) {
+      banner.classList.add('sticky');
+      // reserve space so content doesn't jump
+      container.style.marginTop = `${banner.offsetHeight}px`;
+    }
+  } else {
+    if (banner.classList.contains('sticky')) {
+      banner.classList.remove('sticky');
+      container.style.marginTop = '0';
+    }
+  }
+}
+
+// Listen for scroll events on the scrollable panels
+if (leftPanel) leftPanel.addEventListener('scroll', updateBannerSticky);
+if (rightPanel) rightPanel.addEventListener('scroll', updateBannerSticky);
+window.addEventListener('resize', updateBannerSticky);
+
 // Log helper
 function log(message, type = "info") {
   const time = new Date().toLocaleTimeString();
@@ -102,3 +132,6 @@ searchBox.addEventListener("input", performSearch);
 // Initial load
 refreshJSON();
 log("Dashboard ready.");
+
+// ensure banner state is correct on load
+updateBannerSticky();
