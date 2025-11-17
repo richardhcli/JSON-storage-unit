@@ -1,57 +1,55 @@
 **Purpose**
-- **Context:** This repo is a small Flask-backed single-file JSON store with a static dashboard UI. The server is implemented in `app.py`, the UI is `dashboard.html` and `static/dashboard.js`, and persistent state is `data.json`.
+- **Context:** This repo is a small Flask-backed JSON store with a dashboard UI. The server now uses a modular structure under `app/` (blueprints + services), the UI lives in `app/templates/dashboard.html` with scripts in `app/static/js/dashboard.js`, and persistent state stays in `data.json`.
 
 **Quick Start**
-- **Run server:** Create a venv and install dependencies then run the app:
+- **Run server:** Create a venv, install deps, then launch via the factory entry point:
   - `python -m venv .venv`
-  - `.\.venv\Scripts\Activate.ps1` (PowerShell) or `source .venv/bin/activate` (UNIX)
+  - `\.venv\Scripts\Activate.ps1` (PowerShell) or `source .venv/bin/activate` (UNIX)
   - `pip install flask requests`
-  - `python -u app.py`
-  - Open `http://localhost:5000` to view the dashboard.
-- **Example API call:** `python test_requests.py` shows a sample POST to `/add`.
+  - `python run.py`
+  - Open `http://localhost:5000`, enter the shared key (`richardli-secret` by default) in the banner, and interact with the dashboard.
+- **Example API call:** `python test_requests.py` shows a sample POST to `/increment` with the required API key header.
 
 **Architecture & Key Files**
-- **`app.py`**: Single-process Flask app that serves `dashboard.html` at `/` and provides a small REST CRUD API for a single JSON file.
-  - Important routes: `/get` (GET with `?key=`), `/getall` (GET), `/add` (POST), `/update` (POST), `/delete` (POST), `/setall` (POST replaces entire `data.json`).
-  - Data file: `DATA_FILE = "data.json"`. Reads/writes are synchronized with `threading.Lock()` to avoid concurrent write corruption.
-  - `load_data()` will create or reset `data.json` if missing or corrupted — be aware that a corrupted file is silently reset to `{}`.
-  - Server is started with `app.run(debug=True)` (dev mode) — production deployment will need a WSGI server.
-
-- **`dashboard.html` + `static/dashboard.js`**: Frontend expects the API at the same origin (`window.location.origin`). The UI:
-  - Calls `/getall` to populate the viewer and uses `/setall` to replace the entire JSON store.
-  - Performs client-side JSON parsing and will abort updates if the textarea contains invalid JSON.
-
-- **`data.json`**: Source-of-truth JSON file in the repo root. Editing this file directly will be reflected by the dashboard after refresh. Note `setall` overwrites it completely.
-
-- **`test_requests.py`**: Minimal example showing how to POST to `/add` using `requests`. Use it as a lightweight integration check.
+- **`run.py` / `app/__init__.py`**: `run.py` bootstraps the Flask app using `create_app()`. The factory registers blueprints and loads settings from `app/config.py` (shared secret, data file path).
+- **Blueprints**:
+  - `app/routes/api.py`: CRUD routes plus `/increment`, all secured by `require_secret` (expects `X-API-KEY` header or `?api_key=` query).
+  - `app/routes/dashboard.py`: Serves the dashboard template.
+- **Services**:
+  - `app/services/datastore.py`: Handles thread-safe reads/writes to `data.json`, resetting to `{}` on corruption.
+  - `app/services/security.py`: Provides the shared-secret decorator.
+- **Frontend**: `app/templates/dashboard.html` plus `app/static/js/dashboard.js`. Same-origin fetches call the API endpoints after the user enters the secret in the banner input.
+- **`data.json`**: Still the single source of truth in the repo root. Manual edits appear in the dashboard after a refresh; `/setall` overwrites it entirely.
+- **`test_requests.py`**: Demonstrates the `/increment` endpoint with the required auth header and payload.
 
 **Developer Patterns & Conventions**
-- Single-file server: expect most changes to be inside `app.py`; the app uses global `DATA_FILE` and `lock` for file operations.
-- Safe file handling: file read uses `json.load()` guarded by try/except; on JSON decode errors the file is reset — when modifying the file by hand, ensure valid JSON to avoid data reset.
-- Endpoints return JSON with HTTP status codes (400 for bad request, 404 for not found, 409 for conflict, 201 for created).
-- Frontend uses `fetch` against the same origin; CORS is not configured (not needed for same-origin), so if you run front-end separately, enable CORS or serve from the Flask app.
+- Backend logic should live inside blueprints/services under `app/`; avoid reintroducing monolithic helpers in runners.
+- `require_secret` must decorate any new API endpoint to keep auth consistent (update `app/config.py` if the secret or data path changes).
+- Datastore helpers automatically lock file access and reset corrupt JSON to `{}` — keep manual edits valid to avoid unintended wipes.
+- Endpoints return JSON with appropriate HTTP codes (400 bad request, 404 missing data, 409 conflicts, 201 creations, 200 success).
+- Frontend fetches always include the stored secret (set via the banner input) and assume same-origin access; configure CORS only if serving the UI elsewhere.
 
 **Common Developer Workflows**
-- Start dev server locally: `python -u app.py` (runs in debug mode on default port 5000).
-- Run the dashboard from the same server — it is served by `send_from_directory('.', 'dashboard.html')` so files are expected in repo root and `./static`.
-- Use `test_requests.py` to exercise the `/add` endpoint. For manual testing, examples below are useful:
-  - Add: `curl -X POST -H "Content-Type: application/json" -d '{"key":"k","value":123}' http://localhost:5000/add`
-  - Get: `curl 'http://localhost:5000/get?key=k'`
-  - Replace all: `curl -X POST -H "Content-Type: application/json" -d @payload.json http://localhost:5000/setall`
+- Start dev server locally: `python run.py` (debug mode on port 5000). `app.py` remains as a thin runner for deployment targets that expect that filename.
+- Dashboard is rendered via Flask templates, so ensure `app/templates` and `app/static` stay in sync when moving UI assets.
+- Use `test_requests.py` or curl with the `X-API-KEY: richardli-secret` header to hit `/get`, `/getall`, `/setall`, `/add`, `/update`, `/delete`, or `/increment`.
+  - Example add: `curl -H "Content-Type: application/json" -H "X-API-KEY: richardli-secret" -d '{"key":"k","value":123}' http://localhost:5000/add`
+  - Example increment: `curl -H "Content-Type: application/json" -H "X-API-KEY: richardli-secret" -d '{"keys":["demo","counter"],"amount":5}' http://localhost:5000/increment`
+  - Replace all: `curl -H "Content-Type: application/json" -H "X-API-KEY: richardli-secret" -d @payload.json http://localhost:5000/setall`
 
 **Integration & External Dependencies**
 - Python packages used (discoverable from imports): `flask`, `requests`.
 - No `requirements.txt` in repo — create one when pinning dependencies for CI/deployment.
 
 **Debugging Notes & Gotchas**
-- If `app.py` exits or `data.json` is empty/corrupt, `load_data()` will reset the file to `{}` — losing previous contents. Back up `data.json` before experimenting.
-- Concurrent requests: the in-process `threading.Lock()` prevents simultaneous writes, but this app is not designed for multi-worker WSGI deployments without additional coordination (e.g., a shared DB or single writer service).
-- Dashboard failures: if `dataOutput` contains invalid JSON the UI will refuse updates — fix JSON format or use `/setall` with a valid JSON payload.
+- If the server restarts or `data.json` becomes corrupt, `app/services/datastore.py` will reset the file to `{}` — back up the file before risky edits.
+- Concurrent requests are serialized via the datastore lock, but the design still assumes a single-process dev server; multi-worker WSGI deployments need shared storage.
+- Dashboard failures: if `#dataOutput` contains invalid JSON the UI refuses updates — fix the JSON or push a valid payload through `/setall`.
 
 **What to change and where**
-- Add new backend routes or logic in `app.py`.
-- For UI changes, edit `dashboard.html` or `static/dashboard.js` (initial data fetch is `refreshJSON()` calling `/getall`).
-- For data model changes, be explicit about migration—there is no migration path; clients expect the file shape to be stable.
+- Add backend routes/logic inside `app/routes` (new blueprints) or supporting helpers in `app/services`.
+- Update UI/UX in `app/templates/dashboard.html` or `app/static/js/dashboard.js` (`refreshJSON()` still hydrates the textarea from `/getall`).
+- For datastore shape changes, document expectations in `README.md` and consider migration helpers — there is no automated migration.
 
 **When in doubt — quick checks**
 - Can the server read `data.json`? Run `python -c "import json; print(json.load(open('data.json')) )"`.
@@ -59,7 +57,7 @@
 
 **Notes about agent guidance**
 - Merge policy: There were no existing agent docs found. This file is the canonical, minimal guidance to help AI agents be productive.
-- Ask the maintainer if you plan to add persistent infra (DB) or multi-process deployment; those changes require changing concurrency strategy and update patterns in `app.py`.
+- Ask the maintainer if you plan to add persistent infra (DB) or multi-process deployment; those changes would require new concurrency strategies beyond the current single-file datastore.
 
 Please review these instructions and point out any missing developer workflows or local setup details to include.
 
@@ -71,29 +69,24 @@ The following is a complete, detailed summary of the changes and design discussi
 
 ## Project Overview
 
-- Backend: Python + Flask
-- Frontend: HTML + JavaScript
-- Functionality: CRUD operations on a JSON file (`data.json`) and a dashboard interface for interaction.
-- Additional features: Live search, logging, responsive layout, sticky banner with user ID input.
+- Backend: Python + Flask app factory with blueprints
+- Frontend: HTML + JavaScript served from Flask templates/static directories
+- Functionality: CRUD operations on `data.json`, nested increments, and a dashboard interface for interaction.
+- Additional features: Live search, logging, responsive layout, sticky banner with shared secret input.
 
 ## 1. Flask Backend (summary)
 
-- Handles a JSON file (`data.json`): creates it if missing; provides CRUD for keys.
-- Endpoints:
-  - `/getall` — returns entire JSON
-  - `/setall` — overwrites JSON with posted object
-  - `/add` — adds a key/value pair
-  - `/delete` — deletes a key
-- Key helper functions:
-  - `load_data()` — safe read/create/reset on decode errors
-  - `save_data(data)` — safe write
-- Routes return JSON with useful HTTP status codes and messages.
+- `run.py` calls `create_app()` which registers the API and dashboard blueprints.
+- The datastore service locks access to `data.json`, auto-creating or resetting it on corruption.
+- API endpoints: `/get`, `/getall`, `/setall`, `/add`, `/update`, `/delete`, `/increment` (supports nested paths with numeric increments).
+- All routes are protected by `require_secret`, expecting `X-API-KEY` or `?api_key=`.
+- Responses use consistent JSON payloads and HTTP codes.
 
 ## 2. Dashboard Frontend (HTML + JS) — summary
 
 - Core layout: top banner (`.banner`), left search panel, right JSON viewer and log panel.
 - Important DOM IDs: `#dataOutput`, `#refreshBtn`, `#updateBtn`, `#searchBox`, `#searchResults`, `#logBox`, `#userIdInput`.
-- JS functions in `static/dashboard.js`:
+- JS functions in `app/static/js/dashboard.js`:
   - `refreshJSON()` — fetch `/getall` and populate `#dataOutput`.
   - `updateJSON()` — POST `#dataOutput` JSON to `/setall`.
   - `performSearch()` — live search keys in in-memory JSON.

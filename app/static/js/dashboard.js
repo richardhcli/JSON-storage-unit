@@ -29,7 +29,6 @@ if (userIdInput) {
 
   function checkUserIdPresence() {
     const has = userIdInput.value && userIdInput.value.trim().length > 0;
-    // log only when we transition into 'empty' state (avoid spamming)
     if (!has && lastUserIdPresent !== false) {
       log('No User ID entered — API requests will be rejected by the server.', 'error');
     }
@@ -48,44 +47,41 @@ if (userIdInput) {
     checkUserIdPresence();
   });
 
-  // initial check on load
   checkUserIdPresence();
 }
 
 function updateBannerSticky() {
-  // Become sticky when either panel has been scrolled down
   const leftScrolled = leftPanel && leftPanel.scrollTop > 0;
   const rightScrolled = rightPanel && rightPanel.scrollTop > 0;
 
   if (leftScrolled || rightScrolled) {
     if (!banner.classList.contains('sticky')) {
       banner.classList.add('sticky');
-      // reserve space so content doesn't jump
       container.style.marginTop = `${banner.offsetHeight}px`;
     }
-  } else {
-    if (banner.classList.contains('sticky')) {
-      banner.classList.remove('sticky');
-      container.style.marginTop = '0';
-    }
+  } else if (banner.classList.contains('sticky')) {
+    banner.classList.remove('sticky');
+    container.style.marginTop = '0';
   }
 }
 
-// Listen for scroll events on the scrollable panels
 if (leftPanel) leftPanel.addEventListener('scroll', updateBannerSticky);
 if (rightPanel) rightPanel.addEventListener('scroll', updateBannerSticky);
 window.addEventListener('resize', updateBannerSticky);
 
-// Log helper
 function log(message, type = "info") {
   const time = new Date().toLocaleTimeString();
   const prefix = type === "error" ? "[ERROR]" : "[OK]";
   logBox.textContent += `${time} ${prefix} ${message}\n`;
-  logBox.scrollTop = logBox.scrollHeight;  // auto-scroll
+  logBox.scrollTop = logBox.scrollHeight;
 }
 
-// Refresh JSON from backend
 async function refreshJSON() {
+  if (!userIdInput || !userIdInput.value.trim()) {
+    log("Cannot refresh — User ID is empty.", "error");
+    return;
+  }
+
   try {
     const res = await fetch(`${API_BASE}/getall`, { headers: getApiHeaders() });
     if (!res.ok) {
@@ -101,8 +97,12 @@ async function refreshJSON() {
   }
 }
 
-// Update backend with textarea JSON
 async function updateJSON() {
+  if (!userIdInput || !userIdInput.value.trim()) {
+    log("Cannot update — User ID is empty.", "error");
+    return;
+  }
+
   let parsed;
 
   try {
@@ -130,7 +130,6 @@ async function updateJSON() {
   }
 }
 
-// Live auto-search
 function performSearch() {
   const query = searchBox.value.trim().toLowerCase();
 
@@ -162,14 +161,10 @@ function performSearch() {
                      : "Search found no matches.");
 }
 
-// Event bindings
 refreshBtn.onclick = refreshJSON;
 updateBtn.onclick = updateJSON;
 searchBox.addEventListener("input", performSearch);
 
-// Initial load
 refreshJSON();
 log("Dashboard ready.");
-
-// ensure banner state is correct on load
 updateBannerSticky();
