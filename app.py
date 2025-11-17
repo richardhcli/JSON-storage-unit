@@ -174,12 +174,76 @@ def set_all():
     
 
 
+@app.route("/increment", methods=["POST"])
+@require_secret
+def increment_value():
+    """
+    Increment a nested value following a series of keys provided in the request JSON.
 
+    Expected request JSON format:
+    {
+      "keys": ["a", "b", "c"],    # required, non-empty list of keys
+      "amount": 5                      # optional numeric amount (defaults to 1)
+    }
 
+    Behavior:
+    - Traverse `data.json` creating nested dicts for each key except the last.
+    - If the final key does not exist, initialize it to 0.
+    - If the final key exists but is not numeric, it will be reset to 0.
+    - Increment the final key's numeric value by `amount` and save.
+    """
+    payload = request.get_json()
 
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object with a 'keys' array"}), 400
 
+    keys = payload.get('keys')
+    if not isinstance(keys, list) or not keys:
+        return jsonify({"error": "'keys' must be a non-empty array"}), 400
 
+    # amount provided in JSON takes precedence; default to 1
+    amount = payload.get('amount', 1)
+    # validate amount
+    if not isinstance(amount, (int, float)):
+        # try to coerce numeric-looking strings
+        try:
+            amount = int(amount) if isinstance(amount, str) and amount.isdigit() else float(amount)
+        except Exception:
+            return jsonify({"error": "'amount' must be numeric if provided"}), 400
 
+    # Coerce integer-like floats to int
+    try:
+        if isinstance(amount, float) and amount.is_integer():
+            amount = int(amount)
+    except Exception:
+        pass
+
+    # Convert keys to strings
+    try:
+        keys = [str(k) for k in keys]
+    except Exception:
+        return jsonify({"error": "All keys must be convertible to strings"}), 400
+
+    with lock:
+        data = load_data()
+
+        node = data
+        # create nested dicts for all keys except the last
+        for k in keys[:-1]:
+            if k not in node or not isinstance(node[k], dict):
+                node[k] = {}
+            node = node[k]
+
+        last = keys[-1]
+        # initialize or coerce non-numeric to 0
+        if last not in node or not isinstance(node[last], (int, float)):
+            node[last] = 0
+
+        node[last] = node[last] + amount
+
+        save_data(data)
+
+    return jsonify({"success": True, "message": f"Incremented '{'.'.join(keys)}'", "new_value": node[last], "amount": amount})
 
 # ---------- Run Server ---------- #
 
