@@ -9,7 +9,7 @@ python -m venv .venv
 pip install -r requirements.txt
 python run.py
 ```
-Open http://localhost:5000 and enter the shared key (`richardli-secret` by default) in the User ID box to unlock API calls.
+Open http://localhost:5000 and enter the shared key in the User ID box to unlock API calls.
 
 Environment variables
 - Create a local `.env` file at the project root to store secrets during development. Example keys are provided in `.env.example`.
