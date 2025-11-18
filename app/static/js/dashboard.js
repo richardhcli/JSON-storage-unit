@@ -1,185 +1,143 @@
-const API_BASE = window.location.origin;
+document.addEventListener('DOMContentLoaded', () => {
+  const App = window.App || {};
+  const els = (App && App.els) || {};
+  const log = (App && App.utils && App.utils.log) ? App.utils.log : () => {};
+  const getApiHeaders = (App && App.utils && App.utils.getApiHeaders) ? App.utils.getApiHeaders : (e=>e||{});
 
-// DOM references
-const dataOutput = document.getElementById("dataOutput");
-const refreshBtn = document.getElementById("refreshBtn");
-const updateBtn = document.getElementById("updateBtn");
-const searchBox = document.getElementById("searchBox");
-const searchResults = document.getElementById("searchResults");
-const logBox = document.getElementById("logBox");
+  function updateBannerSticky() {
+    const leftPanel = els.tabWrapper || document.querySelector('.tab-wrapper');
+    const rightPanel = els.rightPanel || document.querySelector('.right-panel');
+    const banner = els.banner || document.querySelector('.banner');
+    const container = els.container || document.querySelector('.container');
+    const leftScrolled = leftPanel && leftPanel.scrollTop > 0;
+    const rightScrolled = rightPanel && rightPanel.scrollTop > 0;
 
-// Panels & banner for sticky behavior
-const leftPanel = document.querySelector('.left-panel');
-const rightPanel = document.querySelector('.right-panel');
-const banner = document.querySelector('.banner');
-const container = document.querySelector('.container');
-const userIdInput = document.getElementById("userIdInput");
+    if (!banner || !container) return;
 
-function getApiHeaders(extra = {}) {
-  const apiKey = userIdInput ? userIdInput.value.trim() : "";
-  const headers = Object.assign({}, extra);
-  if (apiKey) headers["X-API-KEY"] = apiKey;
-  return headers;
-}
-
-if (userIdInput) {
-  const saved = localStorage.getItem('incremental_user_id');
-  if (saved) userIdInput.value = saved;
-  let lastUserIdPresent = null;
-
-  function checkUserIdPresence() {
-    const has = userIdInput.value && userIdInput.value.trim().length > 0;
-    if (!has && lastUserIdPresent !== false) {
-      log('No User ID entered — API requests will be rejected by the server.', 'error');
+    if (leftScrolled || rightScrolled) {
+      if (!banner.classList.contains('sticky')) {
+        banner.classList.add('sticky');
+        container.style.marginTop = `${banner.offsetHeight}px`;
+      }
+    } else if (banner.classList.contains('sticky')) {
+      banner.classList.remove('sticky');
+      container.style.marginTop = '0';
     }
-    if (has && lastUserIdPresent === false) {
-      log('User ID entered.');
-    }
-    lastUserIdPresent = has;
   }
 
-  userIdInput.addEventListener('input', () => {
-    localStorage.setItem('incremental_user_id', userIdInput.value);
-    checkUserIdPresence();
-  });
-  userIdInput.addEventListener('change', () => {
-    log('User ID updated.');
-    checkUserIdPresence();
-  });
+  if (els.tabWrapper) els.tabWrapper.addEventListener('scroll', updateBannerSticky);
+  if (els.rightPanel) els.rightPanel.addEventListener('scroll', updateBannerSticky);
+  window.addEventListener('resize', updateBannerSticky);
 
-  checkUserIdPresence();
-}
-
-function updateBannerSticky() {
-  const leftScrolled = leftPanel && leftPanel.scrollTop > 0;
-  const rightScrolled = rightPanel && rightPanel.scrollTop > 0;
-
-  if (leftScrolled || rightScrolled) {
-    if (!banner.classList.contains('sticky')) {
-      banner.classList.add('sticky');
-      container.style.marginTop = `${banner.offsetHeight}px`;
-    }
-  } else if (banner.classList.contains('sticky')) {
-    banner.classList.remove('sticky');
-    container.style.marginTop = '0';
-  }
-}
-
-if (leftPanel) leftPanel.addEventListener('scroll', updateBannerSticky);
-if (rightPanel) rightPanel.addEventListener('scroll', updateBannerSticky);
-window.addEventListener('resize', updateBannerSticky);
-
-function log(message, type = "info") {
-  const time = new Date().toLocaleTimeString();
-  const prefix = type === "error" ? "[ERROR]" : "[OK]";
-  if (logBox) {
-    logBox.textContent += `${time} ${prefix} ${message}\n`;
-    logBox.scrollTop = logBox.scrollHeight;
-  } else {
-    console.warn(`Log box missing: ${time} ${prefix} ${message}`);
-  }
-}
-
-async function refreshJSON() {
-  if (!userIdInput || !userIdInput.value.trim()) {
-    log("Cannot refresh — User ID is empty.", "error");
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/getall`, { headers: getApiHeaders() });
-    if (!res.ok) {
-      log("Failed to fetch JSON from backend.", "error");
+  async function refreshJSON() {
+    const userIdInput = els.userIdInput;
+    if (!userIdInput || !userIdInput.value.trim()) {
+      log('Cannot refresh — User ID is empty.', 'error');
       return;
     }
-
-    const json = await res.json();
-    dataOutput.value = JSON.stringify(json, null, 2);
-    log("Refreshed JSON.");
-  } catch (err) {
-    log("Refresh error: " + err.message, "error");
-  }
-}
-
-async function updateJSON() {
-  if (!userIdInput || !userIdInput.value.trim()) {
-    log("Cannot update — User ID is empty.", "error");
-    return;
-  }
-
-  let parsed;
-
-  try {
-    parsed = JSON.parse(dataOutput.value);
-  } catch (err) {
-    log("Update failed — invalid JSON.", "error");
-    return;
+    try {
+      const res = await fetch(`${App.api.base}/getall`, { headers: getApiHeaders() });
+      if (!res.ok) {
+        log('Failed to fetch JSON from backend.', 'error');
+        return;
+      }
+      const json = await res.json();
+      if (els.dataOutput) els.dataOutput.value = JSON.stringify(json, null, 2);
+      log('Refreshed JSON.');
+    } catch (err) {
+      log('Refresh error: ' + err.message, 'error');
+    }
   }
 
-  try {
-    const res = await fetch(`${API_BASE}/setall`, {
-      method: "POST",
-      headers: getApiHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify(parsed)
-    });
-
-    if (!res.ok) {
-      log("Backend rejected update.", "error");
+  async function updateJSON() {
+    const userIdInput = els.userIdInput;
+    if (!userIdInput || !userIdInput.value.trim()) {
+      log('Cannot update — User ID is empty.', 'error');
       return;
     }
-
-    log("Updated backend JSON successfully.");
-  } catch (err) {
-    log("Update request failed: " + err.message, "error");
-  }
-}
-
-function performSearch() {
-  if (!searchBox || !searchResults) {
-    return;
-  }
-
-  const query = searchBox.value.trim().toLowerCase();
-
-  let json;
-  try {
-    json = JSON.parse(dataOutput.value);
-  } catch {
-    searchResults.innerHTML = "<i>Invalid JSON in dataOutput</i>";
-    log("Search aborted — invalid JSON in viewer.", "error");
-    return;
-  }
-
-  if (!query) {
-    searchResults.innerHTML = "";
-    return;
-  }
-
-  const matches = [];
-  for (const key in json) {
-    if (Object.prototype.hasOwnProperty.call(json, key) && key.toLowerCase().includes(query)) {
-      matches.push(`<b>${key}</b>: ${JSON.stringify(json[key])}`);
+    let parsed;
+    try {
+      parsed = JSON.parse(els.dataOutput.value);
+    } catch (err) {
+      log('Update failed — invalid JSON.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch(`${App.api.base}/setall`, {
+        method: 'POST',
+        headers: getApiHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(parsed),
+      });
+      if (!res.ok) {
+        log('Backend rejected update.', 'error');
+        return;
+      }
+      log('Updated backend JSON successfully.');
+    } catch (err) {
+      log('Update request failed: ' + err.message, 'error');
     }
   }
 
-  searchResults.innerHTML =
-    matches.length ? matches.join("<br><br>") : "<i>No matches found</i>";
+  function performSearch() {
+    const searchBox = els.searchBox;
+    const searchResults = els.searchResults;
+    const dataOutput = els.dataOutput;
+    if (!searchBox || !searchResults || !dataOutput) return;
 
-  log(matches.length ? `Search matched ${matches.length} key(s).`
-                     : "Search found no matches.");
-}
+    const query = searchBox.value.trim().toLowerCase();
+    let json;
+    try {
+      json = JSON.parse(dataOutput.value);
+    } catch {
+      searchResults.innerHTML = '<i>Invalid JSON in dataOutput</i>';
+      log('Search aborted — invalid JSON in viewer.', 'error');
+      return;
+    }
+    if (!query) {
+      searchResults.innerHTML = '';
+      return;
+    }
+    const matches = [];
+    for (const key in json) {
+      if (Object.prototype.hasOwnProperty.call(json, key) && key.toLowerCase().includes(query)) {
+        matches.push(`<b>${key}</b>: ${JSON.stringify(json[key])}`);
+      }
+    }
+    searchResults.innerHTML = matches.length ? matches.join('<br><br>') : '<i>No matches found</i>';
+    log(matches.length ? `Search matched ${matches.length} key(s).` : 'Search found no matches.');
+  }
 
-if (refreshBtn) refreshBtn.addEventListener("click", refreshJSON);
-if (updateBtn) updateBtn.addEventListener("click", updateJSON);
-if (searchBox) searchBox.addEventListener("input", performSearch);
+  function bindDataTabOnce() {
+    const refreshBtn = els.refreshBtn;
+    const updateBtn = els.updateBtn;
+    if (refreshBtn && !refreshBtn.__bound) {
+      refreshBtn.addEventListener('click', refreshJSON);
+      refreshBtn.__bound = true;
+    }
+    if (updateBtn && !updateBtn.__bound) {
+      updateBtn.addEventListener('click', updateJSON);
+      updateBtn.__bound = true;
+    }
+  }
 
-if (dataOutput) {
-  try {
-    const activeTab = localStorage.getItem('incremental_active_tab');
-    if (activeTab === 'data') {
+  bindDataTabOnce();
+
+  document.addEventListener('tabchange', (e) => {
+    if (e && e.detail && e.detail.tab === 'data') {
+      bindDataTabOnce();
       refreshJSON();
     }
-  } catch (e) { /* ignore */ }
-  log("Dashboard ready.");
-  updateBannerSticky();
-}
+  });
+  if (els.searchBox) els.searchBox.addEventListener('input', performSearch);
+
+  if (els.dataOutput) {
+    try {
+      const activeTab = localStorage.getItem('incremental_active_tab');
+      if (activeTab === 'data') {
+        refreshJSON();
+      }
+    } catch (e) {}
+    log('Dashboard ready.');
+    updateBannerSticky();
+  }
+});
