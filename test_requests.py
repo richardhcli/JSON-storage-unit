@@ -8,7 +8,8 @@ payload = {
     "amount": 5
 }
 
-response = requests.post("http://localhost:5000/increment", json=payload, headers=HEADERS)
+url = "https://pythingsrhl.pythonanywhere.com/increment" #"http://localhost:5000/increment"
+response = requests.post(url, json=payload, headers=HEADERS)
 
 print(response.status_code)
 try:

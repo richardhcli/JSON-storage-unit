@@ -10,3 +10,7 @@ DATA_FILE_PATH = Path(os.environ.get("DATA_FILE", BASE_DIR / "data.json"))
 
 # Simple shared secret for API auth (default value preserved for dev parity)
 SECRET_KEY = os.environ.get("SECRET_KEY")
+if (SECRET_KEY == None): # weird bug of not reading from .env on pythonanywhere. idk.
+    SECRET_KEY = "richardli-secret"
+
+print(f"SECRET_KEY: {SECRET_KEY}")
