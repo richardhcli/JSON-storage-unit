@@ -1,5 +1,5 @@
 **Purpose**
-- **Context:** This repo is a small Flask-backed JSON store with a dashboard UI. The server now uses a modular structure under `app/` (blueprints + services), the UI lives in `app/templates/dashboard.html` with scripts in `app/static/js/dashboard.js`, and persistent state stays in `data.json`.
+- **Context:** This repo is a small Flask-backed JSON store with a dashboard UI. The server now uses a modular structure under `app/` (blueprints + services), the UI is a single template at `app/templates/dashboard.html` with modular scripts under `app/static/js/` (`refs.js`, `shared_ui.js`, `dashboard.js`, `api_generator.js`), and persistent state stays in `data.json`.
 
 **Quick Start**
 - **Run server:** Create a venv, install deps, then launch via the factory entry point:
@@ -18,7 +18,12 @@
 - **Services**:
   - `app/services/datastore.py`: Handles thread-safe reads/writes to `data.json`, resetting to `{}` on corruption.
   - `app/services/security.py`: Provides the shared-secret decorator.
-- **Frontend**: `app/templates/dashboard.html` plus `app/static/js/dashboard.js`. Same-origin fetches call the API endpoints after the user enters the secret in the banner input.
+- **Frontend**: Single-page `app/templates/dashboard.html` with tabs (Dashboard, Data, API Gen).
+  - `app/static/js/refs.js`: centralizes `window.App` with `els`, `api.base`, and `utils` (`log`, `getApiHeaders`). Must load first.
+  - `app/static/js/shared_ui.js`: tab switching, persists userId + active tab, dispatches `tabchange` events.
+  - `app/static/js/dashboard.js`: Data tab (getall/setall, search), sticky banner behavior.
+  - `app/static/js/api_generator.js`: API generator tab (load keys, nested population, example snippets).
+  Same-origin fetches call API endpoints; the banner input is used as the shared secret.
 - **`data.json`**: Still the single source of truth in the repo root. Manual edits appear in the dashboard after a refresh; `/setall` overwrites it entirely.
 - **`test_requests.py`**: Demonstrates the `/increment` endpoint with the required auth header and payload.
 
@@ -31,7 +36,7 @@
 
 **Common Developer Workflows**
 - Start dev server locally: `python run.py` (debug mode on port 5000). `app.py` remains as a thin runner for deployment targets that expect that filename.
-- Dashboard is rendered via Flask templates, so ensure `app/templates` and `app/static` stay in sync when moving UI assets.
+- Dashboard is rendered via Flask templates, so ensure `app/templates` and `app/static` stay in sync when moving UI assets. Script order matters: include `refs.js` before the other JS files.
 - Use `test_requests.py` or curl with the `X-API-KEY: richardli-secret` header to hit `/get`, `/getall`, `/setall`, `/add`, `/update`, `/delete`, or `/increment`.
   - Example add: `curl -H "Content-Type: application/json" -H "X-API-KEY: richardli-secret" -d '{"key":"k","value":123}' http://localhost:5000/add`
   - Example increment: `curl -H "Content-Type: application/json" -H "X-API-KEY: richardli-secret" -d '{"keys":["demo","counter"],"amount":5}' http://localhost:5000/increment`
@@ -84,13 +89,11 @@ The following is a complete, detailed summary of the changes and design discussi
 
 ## 2. Dashboard Frontend (HTML + JS) — summary
 
-- Core layout: top banner (`.banner`), left search panel, right JSON viewer and log panel.
-- Important DOM IDs: `#dataOutput`, `#refreshBtn`, `#updateBtn`, `#searchBox`, `#searchResults`, `#logBox`, `#userIdInput`.
-- JS functions in `app/static/js/dashboard.js`:
-  - `refreshJSON()` — fetch `/getall` and populate `#dataOutput`.
-  - `updateJSON()` — POST `#dataOutput` JSON to `/setall`.
-  - `performSearch()` — live search keys in in-memory JSON.
-  - `log(message,type)` — centralized logging to `#logBox`.
+- Core layout: top banner (`.banner`) with User ID input, a full-width `.tab-wrapper` (three tabs: Dashboard, Data, API Gen), and a right Activity Log panel.
+- Important DOM IDs: `#dataOutput`, `#refreshBtn`, `#updateBtn`, `#searchBox`, `#searchResults`, `#logBox`, `#userIdInput`, `#rootLevelKeySelect`, `#childLevelKeySelect`, `#amount`.
+- Centralized references: `app/static/js/refs.js` exposes `window.App.els` and `window.App.utils` used by all modules.
+- Events: tab changes dispatch `tabchange` with `{ detail: { tab } }` for modules to re-bind or refresh.
+- Behavior: `dashboard.js` handles Data tab (refresh/setall, search, sticky banner); `api_generator.js` handles API Gen tab (load keys, nested, snippet output). Activity Log clears on reload; userId + active tab persist.
 
 ## Enhancements implemented
 
@@ -103,8 +106,10 @@ The following is a complete, detailed summary of the changes and design discussi
 ## Current Frontend Components (quick map)
 
 - Banner: `.banner` / `.banner-title` / `#userIdInput`
-- Left panel: `.left-panel` / `#searchBox` / `#searchResults`
-- Right panel: `.right-panel` / `#dataOutput` / `#refreshBtn` / `#updateBtn` / `#logBox`
+- Tabs: `.tab-wrapper` with `#tab-dashboard`, `#tab-data`, `#tab-apigen`
+- Data tab: `#searchBox` / `#searchResults` / `#dataOutput` / `#refreshBtn` / `#updateBtn`
+- API Gen tab: `#rootLevelKeySelect` / `#childLevelKeySelect` / `#amount` / `#generateBtn` / `#refreshKeysBtn` plus outputs `#headersOut` `#bodyOut` `#jsOut`
+- Right log: `.right-panel` with `#logBox`
 
 ## Unimplemented / Next steps (non-exhaustive)
 

@@ -1,12 +1,12 @@
 ## Incremental System
 
-Flask-backed JSON store with a lightweight dashboard UI for managing personal goals/plans.
+Flask-backed JSON store with a lightweight, single-page dashboard UI.
 
 ### Quick start
 ```powershell
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install flask requests python-dotenv
+\.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 python run.py
 ```
 Open http://localhost:5000 and enter the shared key (`richardli-secret` by default) in the User ID box to unlock API calls.
@@ -27,13 +27,26 @@ app/
 		datastore.py     # Thread-safe JSON file helpers
 		security.py      # Shared-secret decorator
 	templates/
-		dashboard.html   # Frontend layout
+		dashboard.html   # Single-page dashboard with tabs
 	static/js/
-		dashboard.js     # Frontend logic
+		refs.js          # Central window.App { els, api.base, utils }
+		shared_ui.js     # Tabs, persistence (userId), tabchange event
+		dashboard.js     # Data tab: refresh/setall, search, sticky banner
+		api_generator.js # API Gen tab: keys loading, nested population, snippets
 run.py               # Dev entry point (python run.py)
 app.py               # Back-compat runner for hosting platforms
 data.json            # Persistent JSON store
 ```
+
+### Frontend architecture
+- Single template (`dashboard.html`) renders three tabs: `dashboard`, `data`, `apigen` inside a `.tab-wrapper` and a right-side Activity Log.
+- `refs.js` initializes `window.App`:
+	- `App.api.base`: `window.location.origin`
+	- `App.els`: all DOM elements (by id and common classes) loaded once
+	- `App.utils.log(message, type)`: writes to `#logBox`
+	- `App.utils.getApiHeaders(extra)`: injects `X-API-KEY` from `#userIdInput`
+- Script load order (important): include `refs.js` before `shared_ui.js`, `dashboard.js`, and `api_generator.js`.
+- Activity Log clears on page refresh; `userId` and active tab persist via `localStorage`.
 
 ### API basics
 - All endpoints expect `X-API-KEY: richardli-secret` (or `?api_key=`).
