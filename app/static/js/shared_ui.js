@@ -57,6 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const savedTab = localStorage.getItem('incremental_active_tab') || 'dashboard';
       setActiveTab(savedTab);
 
+      // Banner title click handler - navigate to dashboard tab
+      const bannerTitle = document.querySelector('.banner-title');
+      if (bannerTitle) {
+        bannerTitle.addEventListener('click', (e) => {
+          e.preventDefault();
+          setActiveTab('dashboard');
+        });
+      }
+
       // Allow in-panel nav links to switch tabs
       document
         .querySelectorAll('[data-action="show-dashboard"]')
