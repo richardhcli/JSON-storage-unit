@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Incremental System · Dashboard</title>
+  <title>Public display CRUD System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   {# --------------------------------------------------------------------- #}
   {# Global Styles: layout, responsive behavior, and shared UI elements    #}
@@ -48,11 +48,12 @@
     <!-- Banner: fixed header with app title, tab buttons, and user ID input -->
     <header class="banner">
       <div style="display:flex; align-items:center; gap:16px;">
-        <a class="banner-title" href="/" style="color:#fff; text-decoration:none;">My Incremental System</a>
+        <a class="banner-title" href="/" style="color:#fff; text-decoration:none;">My public Wall</a>
         <div class="tab-buttons" style="display:flex; gap:8px;">
           <button class="tab-button" data-tab="dashboard">Dashboard</button>
           <button class="tab-button" data-tab="data">Data</button>
           <button class="tab-button" data-tab="apigen">API Gen</button>
+          <button class="tab-button" data-tab="about">About</button>
         </div>
       </div>
       <div class="banner-userid">
@@ -119,6 +120,30 @@ X-API-KEY: &lt;your-secret&gt;</pre>
           </div>
         </div>
       </section>
+
+      {# About Tab: static project information #}
+      <section id="tab-about" class="tab-panel" aria-label="About">
+        <h2>About This Project</h2>
+        <p>
+          Hello! This is Richard Li here.
+        </p>
+        <p>
+          <strong>Project:</strong> This was originally supposed to be a CRUD system for my personal use to manage incremental data updates via API calls.
+          Ie: An IRL leveling system for self-motivation.
+        </p>
+        <p>
+          However, I have decided to make it a public display CRUD system for anyone to use and contribute to. Partially because such a leveling system was better off being local, and partially so that I could still scrap together something useful.
+        </p>
+        <p>
+          Also, cool social experiment!
+        </p>
+        <p>
+          This project is open-source and available on my GitHub: <a href="https://github.com/richardhcli/JSON-storage-unit" target="_blank" rel="noopener noreferrer">https://github.com/richardhcli/JSON-storage-unit</a>
+        </p>
+        <p>
+          <strong>Contact:</strong> rhli.richardli@gmail.com | <a href="https://www.linkedin.com/in/richardhcli" target="_blank" rel="noopener noreferrer">www.linkedin.com/in/richardhcli</a>
+        </p>
+      </section>
     </div>
   {% endmacro %}
 
@@ -142,6 +167,9 @@ X-API-KEY: &lt;your-secret&gt;</pre>
     {{ activity_log() }}
   </div>
 
+  <p> contact: rhli.richardli@gmail.com | linkedin.com/in/richardhcli</p>
+
+  
   {# Script Assets: shared state management, data ops, and generator logic #}
   <script src="{{ url_for('static', filename='js/refs.js') }}"></script>
   <script src="{{ url_for('static', filename='js/shared_ui.js') }}"></script>

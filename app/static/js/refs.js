@@ -58,7 +58,8 @@
       'textUpdateBtn',
       'tab-dashboard',
       'tab-data',
-      'tab-apigen'
+      'tab-apigen',
+      'tab-about'
     ];
     ids.forEach((id) => {
       App.els[id] = document.getElementById(id);

@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dashboard: els['tab-dashboard'] || document.getElementById('tab-dashboard'),
       data: els['tab-data'] || document.getElementById('tab-data'),
       apigen: els['tab-apigen'] || document.getElementById('tab-apigen'),
+      about: els['tab-about'] || document.getElementById('tab-about'),
     };
 
     function setActiveTab(tab) {
@@ -74,6 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         .forEach((a) => a.addEventListener('click', (e) => {
           e.preventDefault();
           setActiveTab('apigen');
+        }));
+      document
+        .querySelectorAll('[data-action="show-about"]')
+        .forEach((a) => a.addEventListener('click', (e) => {
+          e.preventDefault();
+          setActiveTab('about');
         }));
     }
   } catch (err) {
