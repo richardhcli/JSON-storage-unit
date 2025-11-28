@@ -53,6 +53,9 @@
       'headersOut',
       'bodyOut',
       'jsOut',
+      'textNotes',
+      'textRefreshBtn',
+      'textUpdateBtn',
       'tab-dashboard',
       'tab-data',
       'tab-apigen'

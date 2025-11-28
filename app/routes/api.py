@@ -2,6 +2,7 @@
 from flask import Blueprint, jsonify, request
 
 from app.services.datastore import read_data, write_data
+from app.services.textstore import read_textdb, write_textdb
 from app.services.security import require_secret
 
 api_bp = Blueprint("api", __name__)
@@ -158,4 +159,36 @@ def increment_value():
         "message": f"Incremented '{'.'.join(keys)}'",
         "new_value": new_value,
         "amount": amount,
+    })
+
+
+@api_bp.route("/getText", methods=["GET"])
+def get_text():
+    """Return the plain-text content stored in dataText.txt."""
+    return jsonify({"text": read_textdb()})
+
+
+@api_bp.route("/setText", methods=["POST"])
+def set_text():
+    """Replace the plain-text content stored in dataText.txt."""
+    payload = request.get_json(silent=True)
+
+    if isinstance(payload, dict) and "text" in payload:
+        new_text = payload["text"]
+        new_text = "" if new_text is None else str(new_text)
+    else:
+        # Fallback: treat entire raw body as the new text
+        raw_body = request.get_data(as_text=True)
+        if raw_body is None:
+            return jsonify({"error": "Request body must include text content."}), 400
+        new_text = raw_body
+
+    def _replace(_: str) -> str:
+        return new_text
+
+    stored_value = write_textdb(_replace)
+    return jsonify({
+        "success": True,
+        "message": "Updated dataText.txt",
+        "text": stored_value,
     })

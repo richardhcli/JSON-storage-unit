@@ -19,12 +19,13 @@ Environment variables
 ```
 app/
 	__init__.py        # Flask factory & blueprint registration
-	config.py          # Secret key + datastore path
+	config.py          # Secret key + datastore paths
 	routes/
-		api.py           # CRUD + increment endpoints
+		api.py           # CRUD + increment endpoints + text endpoints
 		dashboard.py     # Serves the HTML dashboard
 	services/
 		datastore.py     # Thread-safe JSON file helpers
+		textstore.py     # Thread-safe text file helpers (no auth)
 		security.py      # Shared-secret decorator
 	templates/
 		dashboard.html   # Single-page dashboard with tabs
@@ -33,9 +34,11 @@ app/
 		shared_ui.js     # Tabs, persistence (userId), tabchange event
 		dashboard.js     # Data tab: refresh/setall, search, sticky banner
 		api_generator.js # API Gen tab: keys loading, nested population, snippets
+		text_panel.js    # Dashboard tab: workspace notes (no API key)
 run.py               # Dev entry point (python run.py)
 app.py               # Back-compat runner for hosting platforms
 data.json            # Persistent JSON store
+dataText.txt         # Persistent plain-text notes (Dashboard tab)
 ```
 
 ### Frontend architecture
@@ -45,10 +48,13 @@ data.json            # Persistent JSON store
 	- `App.els`: all DOM elements (by id and common classes) loaded once
 	- `App.utils.log(message, type)`: writes to `#logBox`
 	- `App.utils.getApiHeaders(extra)`: injects `X-API-KEY` from `#userIdInput`
-- Script load order (important): include `refs.js` before `shared_ui.js`, `dashboard.js`, and `api_generator.js`.
+- Script load order (important): include `refs.js` before `shared_ui.js`, `dashboard.js`, `api_generator.js`, and `text_panel.js`.
 - Activity Log clears on page refresh; `userId` and active tab persist via `localStorage`.
+- Dashboard tab includes a "Workspace Notes" textarea (`#textNotes`) synced with `dataText.txt` via `/getText` and `/setText` (no API key required).
 
 ### API basics
-- All endpoints expect `X-API-KEY: richardli-secret` (or `?api_key=`).
+- Most endpoints expect `X-API-KEY: richardli-secret` (or `?api_key=`).
+- Exceptions: `/getText` and `/setText` are open (no auth) for dashboard workspace notes.
 - `POST /increment` body: `{ "keys": ["path","to","value"], "amount": 2 }`.
+- `POST /setText` body: `{ "text": "your notes here" }`.
 - `test_requests.py` contains a working increment example.

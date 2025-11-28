@@ -1,5 +1,5 @@
 **Purpose**
-- **Context:** This repo is a small Flask-backed JSON store with a dashboard UI. The server now uses a modular structure under `app/` (blueprints + services), the UI is a single template at `app/templates/dashboard.html` with modular scripts under `app/static/js/` (`refs.js`, `shared_ui.js`, `dashboard.js`, `api_generator.js`), and persistent state stays in `data.json`.
+- **Context:** This repo is a small Flask-backed JSON store with a dashboard UI. The server now uses a modular structure under `app/` (blueprints + services), the UI is a single template at `app/templates/dashboard.html` with modular scripts under `app/static/js/` (`refs.js`, `shared_ui.js`, `dashboard.js`, `api_generator.js`, `text_panel.js`), and persistent state stays in `data.json` and `dataText.txt`.
 
 **Quick Start**
 - **Run server:** Create a venv, install deps, then launch via the factory entry point:
@@ -17,22 +17,25 @@
   - `app/routes/dashboard.py`: Serves the dashboard template.
 - **Services**:
   - `app/services/datastore.py`: Handles thread-safe reads/writes to `data.json`, resetting to `{}` on corruption.
+  - `app/services/textstore.py`: Handles thread-safe reads/writes to `dataText.txt` (plain text, no auth required).
   - `app/services/security.py`: Provides the shared-secret decorator.
 - **Frontend**: Single-page `app/templates/dashboard.html` with tabs (Dashboard, Data, API Gen).
   - `app/static/js/refs.js`: centralizes `window.App` with `els`, `api.base`, and `utils` (`log`, `getApiHeaders`). Must load first.
   - `app/static/js/shared_ui.js`: tab switching, persists userId + active tab, dispatches `tabchange` events.
   - `app/static/js/dashboard.js`: Data tab (getall/setall, search), sticky banner behavior.
   - `app/static/js/api_generator.js`: API generator tab (load keys, nested population, example snippets).
-  Same-origin fetches call API endpoints; the banner input is used as the shared secret.
+  - `app/static/js/text_panel.js`: Dashboard tab (workspace notes via `/getText` and `/setText`, no API key required).
+  Same-origin fetches call API endpoints; the banner input is used as the shared secret for authenticated routes.
 - **`data.json`**: Still the single source of truth in the repo root. Manual edits appear in the dashboard after a refresh; `/setall` overwrites it entirely.
+- **`dataText.txt`**: Plain-text workspace notes shown on the Dashboard tab. Managed via `/getText` and `/setText` (no auth).
 - **`test_requests.py`**: Demonstrates the `/increment` endpoint with the required auth header and payload.
 
 **Developer Patterns & Conventions**
 - Backend logic should live inside blueprints/services under `app/`; avoid reintroducing monolithic helpers in runners.
-- `require_secret` must decorate any new API endpoint to keep auth consistent (update `app/config.py` if the secret or data path changes).
-- Datastore helpers automatically lock file access and reset corrupt JSON to `{}` — keep manual edits valid to avoid unintended wipes.
+- `require_secret` must decorate any new API endpoint to keep auth consistent (update `app/config.py` if the secret or data path changes). Exceptions: `/getText` and `/setText` are intentionally open for workspace notes.
+- Datastore helpers automatically lock file access and reset corrupt JSON to `{}` — keep manual edits valid to avoid unintended wipes. `textstore.py` provides similar thread-safe helpers for `dataText.txt`.
 - Endpoints return JSON with appropriate HTTP codes (400 bad request, 404 missing data, 409 conflicts, 201 creations, 200 success).
-- Frontend fetches always include the stored secret (set via the banner input) and assume same-origin access; configure CORS only if serving the UI elsewhere.
+- Frontend fetches always include the stored secret (set via the banner input) for authenticated routes and assume same-origin access; configure CORS only if serving the UI elsewhere.
 
 **Common Developer Workflows**
 - Start dev server locally: `python run.py` (debug mode on port 5000). `app.py` remains as a thin runner for deployment targets that expect that filename.
@@ -107,6 +110,7 @@ The following is a complete, detailed summary of the changes and design discussi
 
 - Banner: `.banner` / `.banner-title` / `#userIdInput`
 - Tabs: `.tab-wrapper` with `#tab-dashboard`, `#tab-data`, `#tab-apigen`
+- Dashboard tab: `#textNotes` / `#textRefreshBtn` / `#textUpdateBtn` (workspace notes, no auth)
 - Data tab: `#searchBox` / `#searchResults` / `#dataOutput` / `#refreshBtn` / `#updateBtn`
 - API Gen tab: `#rootLevelKeySelect` / `#childLevelKeySelect` / `#amount` / `#generateBtn` / `#refreshKeysBtn` plus outputs `#headersOut` `#bodyOut` `#jsOut`
 - Right log: `.right-panel` with `#logBox`
